@@ -1,0 +1,1 @@
+"C:\Program Files\protobuf\bin\protoc.exe" -I=%~dp0 --cpp_out=%~dp0 %~dp0PbDrawHWND.proto

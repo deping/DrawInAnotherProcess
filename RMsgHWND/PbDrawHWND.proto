@@ -1,0 +1,48 @@
+syntax = "proto2";
+
+option optimize_for = LITE_RUNTIME;
+
+package RMsg;
+
+enum MouseEventType { LDOWN = 0; MOVE = 1; LUP = 2; };
+
+message PbHWND
+{
+    message TypeInfo
+    {
+        optional int32 Category = 1 [default = 0];
+        optional int32 Method = 2   [default = 0];
+    }
+    required int64 hwnd = 1;
+}
+
+message PbDrawFrame
+{
+    message TypeInfo
+    {
+        optional int32 Category = 1 [default = 0];
+        optional int32 Method = 2   [default = 1];
+    }
+    required int64 hwnd = 1;
+}
+
+message PbMouseEvent
+{
+    message TypeInfo
+    {
+        optional int32 Category = 1 [default = 0];
+        optional int32 Method = 2   [default = 2];
+    }
+    required MouseEventType kind = 1;
+    required int32 x = 2;
+    required int32 y = 3;
+}
+
+message PbFinish
+{
+    message TypeInfo
+    {
+        optional int32 Category = 1 [default = 0];
+        optional int32 Method = 2   [default = 3];
+    }
+}
