@@ -85,8 +85,15 @@ public:
     }
 };
 
-int main()
+// #pragma comment( linker, "/subsystem:windows /entry:mainCRTStartup" )
+int main(int argc, const char* argv[])
 {
+    if (argc < 2)
+    {
+        std::cout << "Usage: RMsgDrawHWND.exe <port>" << std::endl;
+        return -1;
+    }
+    int port = atoi(argv[1]);
     // Disable to improve performance, Enable to debug communication error.
     SetDebugInfo("RMsgDrawHWND.txt");
     EnableDebugInfo(true);
@@ -97,7 +104,7 @@ int main()
     s.RegisterMessageHandler<Worker, PbDrawFrame>(&Worker::Process, &w);
     s.RegisterMessageHandler<Worker, PbMouseEvent>(&Worker::Process, &w);
     s.RegisterMessageHandler(&Worker::ProcessFinish, &w);
-    s.Connect("127.0.0.1", 9876);
+    s.Connect("127.0.0.1", port);
     s.Run();
 }
 

@@ -121,11 +121,11 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 RMsg::Session s;
 RMsg::Server ser;
-bool listening = false;
+std::thread msgThread;
 bool connected = false;
 void StartDrawProcess(HWND hWnd)
 {
-    std::thread server([&, hWnd]() {
+    msgThread = std::thread([&, hWnd]() {
         // Disable to improve performance, Enable to debug communication error.
         RMsg::SetDebugInfo("RMsgHWND.txt");
         RMsg::EnableDebugInfo(true);
@@ -140,40 +140,41 @@ void StartDrawProcess(HWND hWnd)
             connected = true;
         });
         s.RegisterDisconnect([&]() {
-            listening = false;
             connected = false;
             // This will stop this session
             s.Stop();
         });
-        listening = true;
         // TODO: 不能够硬编码端口号
-        ser.Listen(9876, s);
+        ser.Listen(0, s);
 
         //if (connected)
             s.RunForever();
     });
-    server.detach();
 
-    char RMsgDrawHWND[MAX_PATH];
-    GetModuleFileNameA(NULL, RMsgDrawHWND, MAX_PATH);
+    // Wait for msgThread to listen, so the port is effective.
+    while (!ser.listened())
+    {
+        SwitchToThread();
+    }
+
+    char RMsgDrawHWND[MAX_PATH + 128];
+    *RMsgDrawHWND = '\"';
+    GetModuleFileNameA(NULL, RMsgDrawHWND+1, MAX_PATH);
     char* p = strrchr(RMsgDrawHWND, '\\');
     *p = 0;
-    strcat_s(RMsgDrawHWND, "\\RMsgDrawHWND.exe");
+    strcat_s(RMsgDrawHWND, "\\RMsgDrawHWND.exe\" ");
+    auto len = strlen(RMsgDrawHWND);
+    _itoa_s(ser.port(), RMsgDrawHWND + len, sizeof(RMsgDrawHWND) - len, 10);
 
     STARTUPINFOA si;
     PROCESS_INFORMATION pi;
 
     ZeroMemory(&si, sizeof(si));
     ZeroMemory(&pi, sizeof(pi));
-
-    while (!listening)
-    {
-        SwitchToThread();
-    }
     //创建一个新进程  
     if (CreateProcessA(
-        NULL,   //  指向一个NULL结尾的、用来指定可执行模块的宽字节字符串  
-        RMsgDrawHWND, // 命令行字符串  
+        NULL,
+        RMsgDrawHWND,
         NULL, //    指向一个SECURITY_ATTRIBUTES结构体，这个结构体决定是否返回的句柄可以被子进程继承。  
         NULL, //    如果lpProcessAttributes参数为空（NULL），那么句柄不能被继承。<同上>  
         false,//    指示新进程是否从调用进程处继承了句柄。   
@@ -191,8 +192,8 @@ void StartDrawProcess(HWND hWnd)
       CloseHandle(pi.hThread);  
     }
     else {
+        // failed to create process
         s.Stop();
-        // cerr << "failed to create process" << endl;
     }
 }
 
@@ -280,6 +281,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             connected = false;
             RMsg::PbFinish pbFinish;
             s.EnqueuePbNotice(pbFinish);
+            msgThread.join();
             PostQuitMessage(0);
         }
     }
